@@ -98,6 +98,7 @@ class Client(threading.Thread):
 		self.client = client
 		self.address = address
 		self.size = 1024
+		self.server=server
 
 	def run(self):
 		running = 1
@@ -105,10 +106,10 @@ class Client(threading.Thread):
 			data = self.client.recv(self.size)
 			if data[:4] == "MESG":
 				print data[4:]
-				server.sendToNaivePeers(data,self.address)
+				self.server.sendToNaivePeers(data,self.address)
 			elif data[:4] == "JOIN":
 				#check if connection is okay 
-				if len(server.threads)>server.max_connections:
+				if len(server.threads)>self.server.max_connections:
 					rejection = "REJJ"
 					for t in server.threads :
 						rejection+=t.address
@@ -118,7 +119,7 @@ class Client(threading.Thread):
 
 			elif data[:4] == "REJJ" :
 				self.client.close()
-				server.connect(data[4:])
+				self.server.connect(data[4:])
 				running=0
 
 
