@@ -17,24 +17,30 @@ this is the main loop of the program. It is in charge of handling
 new socket requests by creating a new thread to handle that IP address
 """
 class Server:
-    def __init__(self):
+    def __init__(self,max_connections=2):
         self.host = '' #localhost
         self.port = 442200 #port to bind sockets on this machine. you can change it
         self.backlog = 5
         self.size = 1024 #max message size
         self.server = None
         self.threads = [] #list of Client threads that handle known IP addresses
+        self.max_connections = max_connections #the amount of connections(threads) a server can make
         #creates new Client threads for the IP addresses passed as arguements
-        for arg in sys.argv[1:]:
-            try:
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.connect((arg,50000))
-                c = Client((s,arg), self)
-                c.start()
-                self.threads.append(c)
-            except socket.error, (value,message):
-                print "Connection Error line 31: " + message
-	
+  		connect()
+	"""
+	connect to a clients IP address, where the default is what was passed from command line
+	"""
+	def connect(self, address=sys.argv[1]):
+		try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect((address,50000))
+            c = Client((s,address), self)
+            c.start()
+            self.threads.append(c)
+            c.send("JOIN")
+        except socket.error, (value,message):
+            print "In method Server.connect socket error: " + message
+
     #opens a socket that listens for unidentified requests.
     #i didn't write this I don't know much about it 
     def open_socket(self):
@@ -59,16 +65,25 @@ class Server:
             for s in inputready:
 
                 if s == self.server:
-                    # creates a new Client thread 
-                    c = Client(self.server.accept(), self)
-                    c.start()
-                    self.threads.append(c)
+                    # THIS IS WHERE NEW PEERS ARE CONNECTED
+                    if len(self.threads) < max_connections:
+	                    c = Client(self.server.accept(), self)
+	                    c.start()
+	                    self.threads.append(c)
+                    else:
+
 
                 elif s == sys.stdin:
                     # handle standard input
                     messagetosend = sys.stdin.readline()
                     for t in self.threads:
                         t.send(messagetosend)
+
+    def sendToNaivePeers(messageToSend, publishingAddress) :
+    	for t in self.threads:
+    		if t.address != publishingAddress:
+    			t.send(messagetosend)
+
 
         
 	# close all threads
@@ -87,8 +102,25 @@ class Client(threading.Thread):
         running = 1
         while running:
             data = self.client.recv(self.size)
-            if data:
-                print data
+            if data[:4] == "MESG":
+                print data[4:]
+                server.sendToNaivePeers(data,self.address)
+            elif data[:4] == "JOIN":
+            	#check if connection is okay 
+            	if len(server.threads)>server.max_connections:
+            		rejection = "REJJ"
+            		for t in server.threads :
+            			rejection+=t.address
+            		self.send(rejection)
+            	else :
+            		print "joined " + self.address
+
+            elif data[:4] == "REJJ" :
+            	self.client.close()
+            	server.connect(data[4:])
+            	running=0
+
+
             else:
                 self.client.close()
                 running = 0
