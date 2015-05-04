@@ -1,2 +1,2 @@
 # peertree
-A p2p internet community
+An anonymous p2p internet community
