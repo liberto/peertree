@@ -109,9 +109,9 @@ class Client(threading.Thread):
 				self.server.sendToNaivePeers(data,self.address)
 			elif data[:4] == "JOIN":
 				#check if connection is okay 
-				if len(server.threads)>self.server.max_connections:
+				if len(self.server.threads)>self.server.max_connections:
 					rejection = "REJJ"
-					for t in server.threads :
+					for t in self.server.threads :
 						rejection+=t.address
 					self.send(rejection)
 				else :
