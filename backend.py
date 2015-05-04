@@ -3,7 +3,7 @@
 """
 PeerTree
 Spencer Liberto, Nick Knoebber
-Heavily based off of http://ilab.cs.byu.edu/python/socket/echoserver.html
+Some inspiration from http://ilab.cs.byu.edu/python/socket/echoserver.html
 """
 
 import select
@@ -30,6 +30,8 @@ class Server:
 			self.connect(sys.argv[1])
 		except :
 			print "Creating a lonely node . . ."
+
+
 	"""
 	connect to a clients IP address, where the default is what was passed from command line
 	"""
@@ -47,8 +49,10 @@ class Server:
 		except socket.error, (value,message):
 			print "In method Server.connect socket error: " + message
 
-	#opens a socket that listens for unidentified requests.
-	#i didn't write this I don't know much about it 
+	"""
+	opens a socket that listens for unidentified requests.
+	this part is from the cited website at the top of the file
+	"""
 	def open_socket(self):
 		try:
 			self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -90,6 +94,7 @@ class Server:
 						print "Pruning self"
 						running = 0
 					else:
+						#send the message to all connections
 						for t in self.threads:
 							t.send("MESG" + messagetosend)
 
@@ -130,9 +135,13 @@ class Client(threading.Thread):
 					print "joined " + str(self.address)
 
 			elif data[:4] == "REJJ" :
+				print "Rejection from " + self.address
+				print "Shutting down socket"
+				self.client.shutdown(socket.SHUT_RDWR)
+				print "Closing socket"
 				self.client.close()
+				print "Attempting connection to: "+data[4:]
 				self.server.connect(data[4:])
-				print "Connection rejected! trying: "+data[4:]
 				running=0
 
 
