@@ -34,8 +34,11 @@ class Server:
 	connect to a clients IP address, where the default is what was passed from command line
 	"""
 	def connect(self, address):
+		print "Connecting to "+str(address)
 		try:
 			s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
 			s.connect((address,self.port))
 			c = Client((s,address), self)
 			c.start()
@@ -49,6 +52,7 @@ class Server:
 	def open_socket(self):
 		try:
 			self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 			self.server.bind((self.host,self.port))
 			self.server.listen(5)
 		except socket.error, (value,message):
@@ -56,6 +60,11 @@ class Server:
 				self.server.close()
 			print "Could not open socket: " + message
 			sys.exit(1)
+
+	def sendToNaivePeers(self, messageToSend, publishingAddress) :
+		for t in self.threads:
+			if str(t.address) != publishingAddress:
+				t.send(messageToSend)
 
 	#main loop of main class
 	def run(self):
@@ -77,20 +86,19 @@ class Server:
 				elif s == sys.stdin:
 					# handle standard input
 					messagetosend = sys.stdin.readline()
-					for t in self.threads:
-						t.send(messagetosend)
+					if messagetosend == "exit\n":
+						print "Pruning self"
+						running = 0
+					else:
+						for t in self.threads:
+							t.send("MESG" + messagetosend)
 
-	def sendToNaivePeers(messageToSend, publishingAddress) :
-		for t in self.threads:
-			if t.address != publishingAddress:
-				t.send(messagetosend)
 
-
-		
 	# close all threads
 		self.server.close()
 		for c in self.threads:
 			c.join()
+		exit(1)
 
 class Client(threading.Thread):
 	def __init__(self,(client,address), server):
@@ -106,20 +114,25 @@ class Client(threading.Thread):
 			data = self.client.recv(self.size)
 			if data[:4] == "MESG":
 				print data[4:]
-				self.server.sendToNaivePeers(data,self.address)
+				self.server.sendToNaivePeers(data,str(self.address))
 			elif data[:4] == "JOIN":
 				#check if connection is okay 
 				if len(self.server.threads)>self.server.max_connections:
-					rejection = "REJJ"
-					for t in self.server.threads :
-						rejection+=t.address
+					new_adr = self.server.threads[-1].address
+					rejection = "REJJ"+str(new_adr[0])
+					print "in join clause"
+					print rejection
+					#for t in self.server.threads :
+						#rejection+=str(t.address)
+						#rejection+= " "
 					self.send(rejection)
 				else :
-					print "joined " + self.address
+					print "joined " + str(self.address)
 
 			elif data[:4] == "REJJ" :
 				self.client.close()
 				self.server.connect(data[4:])
+				print "Connection rejected! trying: "+data[4:]
 				running=0
 
 
