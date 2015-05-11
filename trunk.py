@@ -4,6 +4,7 @@ from twisted.internet.protocol import Factory
 from twisted.protocols.basic import LineReceiver
 from twisted.internet import reactor
 from sys import argv
+import platform
 
 """
 trunk.py
@@ -21,7 +22,7 @@ class KeyboardClient(basic.LineReceiver):
 
     def lineReceived(self, line):
         for name, protocol in self.factory.users.iteritems():
-            protocol.sendLine(line + "\r\n")
+            protocol.sendLine(protocol.host_name+": "+line)
 
 class Peer(LineReceiver):
 
@@ -29,7 +30,7 @@ class Peer(LineReceiver):
         self.users = users
         self.addr = addr
         self.port = port
-
+        self.host_name = platform.node()
     def connectionMade(self):
         print "Peer.connectionMade " + self.addr
         self.users[self.addr] = self
@@ -39,12 +40,19 @@ class Peer(LineReceiver):
             del self.users[self.addr]
 
     def lineReceived(self, line):
-        print "Chat.lineReceived"  + line
+        print "from " + line
+        # need to send message to other peers
+        # self.transport.write(line) 
+
+        #for addr in self.users :
+            #if addr != self.addr :
+         #   self.users[addr].transport.write(line)
+  
 
 
 class PeerFactory(Factory):
 
-    def __init__(self):
+    def __init__(self,initialAddresses):
         self.users = {} # maps user names to Chat instances
         for addr in initialAddresses:
             self.makeAPeerConnection(addr)
