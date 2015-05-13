@@ -78,7 +78,7 @@ class Message():
 		return Message(parts[0],parts[1],parts[2])
 
 	def toHash(self) :
-		return hash(self.content)
+		return hash(self.content + self.datetime)
 
 
 class Trunk(object):
