@@ -23,10 +23,7 @@ class KeyboardClient(basic.LineReceiver):
 		pass
 
 	def lineReceived(self, line):
-		m = Message(line)
-		self.trunk.content_history[m.toHash()] = m
-		self.trunk.broadcast("MESG" + m.toString())
-			#protocol.host_name+":
+		self.trunk.recievedKeyboard(line)
 
 class Peer(LineReceiver):
 
@@ -40,12 +37,12 @@ class Peer(LineReceiver):
 		self.trunk.users[self.addr] = self
 
 	def connectionLost(self, reason):
+		print "Peer.connectionLost " + self.addr
 		if self.addr in self.trunk.users.keys():
 			del self.trunk.users[self.addr]
 
 	def lineReceived(self, line):
-		self.trunk.recieved(line,self.addr)
-
+		self.trunk.recievedConn(line,self.addr)
 
 
 class PeerFactory(Factory):
@@ -58,6 +55,12 @@ class PeerFactory(Factory):
 
 	def startedConnecting(self, connector):
 		pass
+
+
+
+	def clientConnectionLost(self, connector, reason):
+		print "PeerFactory.clientConnectionLost"
+
 
 class Message():
 	def __init__(self,content,parent="", datetime=str(datetime.datetime.now()), count=0):
@@ -100,9 +103,9 @@ class Trunk(object):
 	def propogate(self, mesg, publisher):
 		for ip, protocol in self.users.iteritems():
 			if ip is not publisher:
-				protocol.sendLine("MESG"+mesg + "\r\n")
+				protocol.sendLine(mesg + "\r\n")
 
-	def recieved(self, message, ip):
+	def recievedConn(self, message, ip):
 		#print 'recieved: ' + message
 
 		if message[:4] == "MESG" :
@@ -113,13 +116,24 @@ class Trunk(object):
 			else :
 				print mesg.content 
 				self.content_history[mesgHash] = mesg
-				self.propogate(mesg.toString(),ip)
+				self.propogate(message,ip)
 		else :
 			proto=message[:4]
 			param=message[4:]
 			if proto is "ATMT" :
 				for addr in param.split(" "):
 					self.makeAPeerConnection(addr)
+
+	def recievedKeyboard(self, line):
+		if line[0] != "\\":
+			m = Message(line)
+			self.content_history[m.toHash()] = m
+			self.broadcast("MESG" + m.toString())
+		elif line[1] == 'e':
+			reactor.stop()
+			exit(0)
+		else:
+			print "did you mean \\e to exit?"
 
 if __name__ == '__main__':
 	t = Trunk()
