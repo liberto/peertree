@@ -8,49 +8,49 @@ import platform
 import datetime
 
 """
-trunk.py
+root.py
 A basic p2p chat node written with the Twisted protocol
 """
 
 class KeyboardClient(basic.LineReceiver):
 	from os import linesep as delimiter
 
-	def __init__(self, trunk):
-		self.trunk = trunk
+	def __init__(self, root):
+		self.root = root
 		stdio.StandardIO(self)
 
 	def connectionMade(self):
 		pass
 
 	def lineReceived(self, line):
-		self.trunk.recievedKeyboard(line)
+		self.root.recievedKeyboard(line)
 
 class Peer(LineReceiver):
 
-	def __init__(self, trunk, addr, port):
-		self.trunk = trunk
+	def __init__(self, root, addr, port):
+		self.root = root
 		self.addr = addr
 		self.port = port
 
 	def connectionMade(self):
 		print "Peer.connectionMade " + self.addr
-		self.trunk.users[self.addr] = self
+		self.root.users[self.addr] = self
 
 	def connectionLost(self, reason):
 		print "Peer.connectionLost " + self.addr
-		if self.addr in self.trunk.users.keys():
-			del self.trunk.users[self.addr]
+		if self.addr in self.root.users.keys():
+			del self.root.users[self.addr]
 
 	def lineReceived(self, line):
-		self.trunk.recievedConn(line,self.addr)
+		self.root.recievedConn(line,self.addr)
 
 
 class PeerFactory(Factory):
 
-	def __init__(self, trunk):
-		self.trunk = trunk
+	def __init__(self, root):
+		self.root = root
 	def buildProtocol(self, conn):
-		return Peer(self.trunk, conn.host, conn.port)
+		return Peer(self.root, conn.host, conn.port)
 
 
 	def startedConnecting(self, connector):
@@ -81,7 +81,7 @@ class Message():
 		return hash(self.content + self.datetime)
 
 
-class Trunk(object):
+class Root(object):
 	def __init__(self):
 		self.content_history = {}
 		self.users = {}
@@ -136,5 +136,5 @@ class Trunk(object):
 			print "did you mean \\e to exit?"
 
 if __name__ == '__main__':
-	t = Trunk()
+	t = Root()
 	
