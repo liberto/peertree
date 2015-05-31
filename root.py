@@ -1,3 +1,7 @@
+#!/usr/bin/python
+"""
+wow
+"""
 from twisted.internet import stdio
 from twisted.protocols import basic
 from twisted.internet.protocol import Factory
@@ -35,6 +39,8 @@ class Peer(LineReceiver):
 	def connectionMade(self):
 		print "Peer.connectionMade " + self.addr
 		self.root.users[self.addr] = self
+		self.sendLine("EVRY")
+		print "SENT EVRY TO " + self.addr
 
 	def connectionLost(self, reason):
 		print "Peer.connectionLost " + self.addr
@@ -80,7 +86,6 @@ class Message():
 	def toHash(self) :
 		return hash(self.content + self.datetime)
 
-
 class Root(object):
 	def __init__(self):
 		self.content_history = {}
@@ -89,9 +94,12 @@ class Root(object):
 		self.f = PeerFactory(self)
 		self.k = KeyboardClient(self)
 		reactor.listenTCP(port, self.f)
+		self.writesavefile = open(".peertree-content-history.txt", "w+",0)
+                self.readsavefile = open(".peertree-content-history.txt", "r+",0)
 		for addr in argv[1:]:
 			self.makeAPeerConnection(addr)
 		reactor.run()
+
 
 	def makeAPeerConnection(self, addr):
 		reactor.connectTCP(addr, 8123, self.f)
@@ -116,7 +124,12 @@ class Root(object):
 			else :
 				print mesg.content 
 				self.content_history[mesgHash] = mesg
+				self.writesavefile.write(mesg.toString() + "\n")
+				self.writesavefile.flush()
 				self.propogate(message,ip)
+		elif message[:4] == "EVRY" :
+			for k,c in self.content_history.iteritems():
+				self.users[ip].sendLine("MESG" + c.toString())
 		else :
 			proto=message[:4]
 			param=message[4:]
@@ -128,6 +141,8 @@ class Root(object):
 		if line[0] != "\\":
 			m = Message(line)
 			self.content_history[m.toHash()] = m
+			self.writesavefile.write(m.toString() + "\n")
+			self.writesavefile.flush()
 			self.broadcast("MESG" + m.toString())
 		elif line[1] == 'e':
 			reactor.stop()
@@ -135,6 +150,7 @@ class Root(object):
 		else:
 			print "did you mean \\e to exit?"
 
+		
 if __name__ == '__main__':
 	t = Root()
 	
