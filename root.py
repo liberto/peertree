@@ -124,8 +124,10 @@ class Root(object):
 		try :
 			self.readipfile = open(".peertree-known-ips.txt", "r+")
 			for line in self.readipfile:
+				line = line[:-1]
 				self.known_addrs.append(line)
 			self.readipfile.close()
+			print "initial addrs: "+ str(self.known_addrs)
 		except:
 			print "No IP file found"
 		self.port = int(argv[1])
@@ -170,7 +172,7 @@ class Root(object):
 		reactor.connectTCP(addr, port, self.f)
 
 	"""
-	Sends message to all connected peers
+	Sends message to all connected peers, including publisher
 	"""
 	def broadcast(self, mesg):
 		for _, protocol in self.users.iteritems():
@@ -185,7 +187,7 @@ class Root(object):
 				protocol.sendLine(mesg + "\r\n")
 
 	"""
-	Called whenever a message is recieved
+	Called whenever data is recieved
 	Each message contains a protocol:
 		MESG: an actual message with content.
 		EVRY: Sends the content history to every peer
@@ -209,7 +211,7 @@ class Root(object):
 		elif proto == "IPAD" :
 			addresses = message[4:].split(" ")
 			for addr in addresses :
-				if addr != '' and not addr in self.known_addrs:
+				if addr != '':
 					self.saveIP(addr)
 			self.propogate(message,ip)
 		elif proto == "PORT" :
